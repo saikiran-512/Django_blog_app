@@ -33,3 +33,6 @@ mysite_backup/
 
 # Python virtual environment (custom location, if ever moved inside project)
 my_env/
+
+# Collected static files
+staticfiles/
