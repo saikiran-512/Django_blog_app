@@ -1,0 +1,4 @@
+
+Django==5.2.17
+psycopg[binary]==3.3.6
+python-decouple==3.8
