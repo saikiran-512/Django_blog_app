@@ -2,10 +2,9 @@ from django.core.mail import send_mail
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
-from django.db.models import Count
-from django.views.generic import ListView
-from django.contrib.postgres.search import SearchVector, SearchQuery, TrigramSimilarity
-#from django.db.models.functions import Greatest
+from django.db.models import Count, Q
+#from django.views.generic import ListView
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramWordSimilarity
 from .forms import CommentForm, EmailPostForm, SearchForm
 from .models import Post
 from taggit.models import Tag
@@ -165,15 +164,31 @@ def post_search(request):
 
     if 'query' in request.GET:
         form = SearchForm(request.GET)
+
         if form.is_valid():
             query = form.cleaned_data['query']
+
+            search_vector = (
+                SearchVector('title', weight='A') +
+                SearchVector('body', weight='B')
+                )
+
+            search_query = SearchQuery(query)
+
             results = (
                 Post.published.annotate(
-                    similarity=TrigramSimilarity('title', query),
+                    search=search_vector,
+                    rank=SearchRank(search_vector, search_query),
+                    title_similarity=TrigramWordSimilarity(query, 'title'),
+                    body_similarity=TrigramWordSimilarity(query, 'body'),
+                    )
+                    .filter(
+                        Q(rank__gte=0.3) |
+                        Q(title_similarity__gt=0.3) |
+                        Q(body_similarity__gt=0.3)
+                    )
+                    .order_by('-rank', '-title_similarity', '-body_similarity')
                 )
-                .filter(similarity__gt=0.1)
-                .order_by('-similarity')
-            )
 
     return render(
         request,
