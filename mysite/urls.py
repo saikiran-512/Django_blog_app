@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
+from django.views.generic.base import RedirectView
 from django.urls import include, path
 from blog.sitemaps import PostSitemap
 
@@ -25,6 +26,7 @@ sitemaps = {
 }
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/blog/', permanent=False), name='home'),
     path('admin/', admin.site.urls),
     path('blog/', include('blog.urls', namespace='blog')),
     path(
