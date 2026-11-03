@@ -32,5 +32,7 @@ class SearchForm(forms.Form):
     query = forms.CharField()
 
 class RegistrationForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+    
     class Meta(UserCreationForm.Meta):
         fields = ['username', 'email']

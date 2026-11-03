@@ -1,15 +1,17 @@
 from django.core.mail import send_mail
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.db.models import Count, Q
 #from django.views.generic import ListView
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramWordSimilarity
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from .forms import CommentForm, EmailPostForm, SearchForm, RegistrationForm
 from .models import Post
 from taggit.models import Tag
+from urllib.parse import urlencode
 
 # Create your views here.
 def post_list(request, tag_slug=None):
@@ -48,6 +50,13 @@ def post_list(request, tag_slug=None):
 #     paginate_by = 3
 #     template_name = 'blog/post/list.html'
 
+def registration_redirect(action, next_url):
+    query = urlencode({
+        'action': action,
+        'next': next_url
+    })
+
+    return redirect(f"{reverse('blog:register')}?{query}")
 
 def post_detail(request, year, month, day, post):
     post = get_object_or_404(
@@ -78,7 +87,10 @@ def post_detail(request, year, month, day, post):
 
                 return redirect(post.get_absolute_url())
             else:
-                return render('login')
+                return registration_redirect(
+                    'comment',
+                    post.get_absolute_url()
+            )
 
     # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
@@ -104,7 +116,6 @@ def post_detail(request, year, month, day, post):
     )
 
 
-@login_required
 def post_share(request, post_id):
     # Retrieve post by id
     post = get_object_or_404(
@@ -112,11 +123,18 @@ def post_share(request, post_id):
         id=post_id,
         status=Post.Status.PUBLISHED
     )
+    if not request.user.is_authenticated:
+        return registration_redirect(
+            'share',
+            request.get_full_path()
+        )
+
     sent = False
 
     if request.method == 'POST':
         # Form was submitted
         form = EmailPostForm(request.POST)
+
         if form.is_valid():
             # Form fields passed validation
             cd = form.cleaned_data
@@ -129,6 +147,7 @@ def post_share(request, post_id):
                 f"{request.user.username}"
                 f"recommends you read {post.title}"
             )
+
             message = (
                 f"Read {post.title} at {post_url}\n\n"
                 f"Recommended by: {request.user.username}\n"
@@ -156,7 +175,7 @@ def post_share(request, post_id):
         }
     )
 
-@login_required
+
 @require_POST
 def post_comment(request, post_id):
     post = get_object_or_404(
@@ -164,6 +183,12 @@ def post_comment(request, post_id):
         id=post_id,
         status=Post.Status.PUBLISHED
     )
+
+    if not request.user.is_authenticated:
+        return registration_redirect(
+            'comment',
+            post.get_absolute_url()
+        )
 
     comment = None
 
@@ -239,18 +264,41 @@ def post_search(request):
 
 
 def register(request):
+    action = (
+        request.GET.get('action')
+        or request.POST.get('action', '')
+    )
+
+    next_url = (
+        request.GET.get('next')
+        or request.POST.get('next', '')
+    )
+
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
 
         if form.is_valid():
             user = form.save()
             login(request, user)
+
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+
             return redirect('blog:post_list')
+
     else:
         form = RegistrationForm()
 
     return render(
         request,
         'registration/register.html',
-        {'form': form}
+        {
+            'form': form,
+            'action': action,
+            'next': next_url
+        }
     )

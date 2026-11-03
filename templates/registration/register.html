@@ -4,24 +4,81 @@
 {% block title %}Create an Account{% endblock %}
 
 {% block content %}
-    <h1>Create an Account</h1>
+<div class="register-card">
 
-    <p>Register to comment on posts and share blog articles.</p>
+    {% if action == 'comment' %}
+        <p class="register-notice">
+            Create an account to comment on this post.
+        </p>
+    {% elif action == 'share' %}
+        <p class="register-notice">
+            Create an account to share this post by email.
+        </p>
+    {% endif %}
+
+    <h1>Create an Account</h1>
 
     <form method="post">
         {% csrf_token %}
 
-        {{ form.as_p }}
+        <input type="hidden" name="action" value="{{ action }}">
+        <input type="hidden" name="next" value="{{ next }}">
 
-        <p>
-            <input type="submit" value="Register">
-        </p>
+        {{ form.non_field_errors }}
+
+        <div class="register-field">
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div class="field-errors">
+                    {{ form.username.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="register-field">
+            <label for="{{ form.email.id_for_label }}">Email address</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="field-errors">
+                    {{ form.email.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="register-field">
+            <label for="{{ form.password1.id_for_label }}">Password</label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+                <div class="field-errors">
+                    {{ form.password1.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="register-field">
+            <label for="{{ form.password2.id_for_label }}">Re-enter Password</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div class="field-errors">
+                    {{ form.password2.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="register-submit">
+            <input type="submit" value="CREATE ACCOUNT">
+        </div>
     </form>
 
-    <p>
+    <p class="register-login">
         Already have an account?
-        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
+            Login
+        </a>
     </p>
+
+</div>
 {% endblock %}
 
 {% block sidebar %}{% endblock %}
