@@ -5,35 +5,357 @@
 <head>
     <title>{% block title %}{% endblock %}</title>
     <link href="{% static 'css/blog.css' %}" rel="stylesheet">
+
+    <style>
+        .site-header {
+            margin: 65px 20px 25px 20px;
+            position: relative;
+            min-height: 80px;
+        }
+
+        .profile-section {
+            position: absolute;
+            top: -10px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            isolation: isolate;
+        }
+
+        .profile-button {
+            width: 50px;
+            height: 50px;
+            background-color: transparent;
+            color: #00aaff;
+            border: 2px solid #00aaff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .profile-button:hover {
+            background-color: #e6f7ff;
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: 70px;
+            right: 0;
+            width: 180px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 8px 0;
+            display: none;
+            z-index: 1000;
+        }
+
+        .profile-dropdown.show {
+            display: block;
+        }
+
+        .profile-dropdown a {
+            display: block;
+            padding: 10px 15px;
+
+            color: #333;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .profile-dropdown a:hover {
+            background-color: #f2f2f2;
+        }
+
+        .profile-dropdown form {
+            margin: 0;
+        }
+
+        .dropdown-logout {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            background-color: transparent;
+            border: none;
+            color: #333;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .dropdown-logout:hover {
+            background-color: #f2f2f2;
+        }
+
+        .profile-username {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .site-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: black;
+            font-size: 32px;
+            font-weight: normal;
+            text-decoration: none;
+        }
+
+        .site-home svg {
+            flex-shrink: 0;
+            color: #00aaff;
+        }
+
+        .site-home:hover {
+            color: black;
+        }
+
+        .password-toggle:hover {
+            color: #00aaff
+        }
+
+
+        /* Login password field layout */
+        .password-field {
+            display: block;
+            clear: both;
+            margin-bottom: 10px;
+        }
+
+        .password-field label {
+            display: block;
+            float: none;
+            clear: both;
+            margin-bottom: 4px;
+        }
+
+        .password-input-wrapper {
+            display: flex;
+            position: relative;
+            float: none;
+            clear: both;
+            width: 250px;
+        }
+
+        .password-input-wrapper input {
+            float: none;
+            clear: none;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 6px 35px 6px 10px;
+            font-size: 14px;
+            background: #ededed;
+            border: 0;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            float: none;
+            clear: none;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            border: none;
+        }
+
+        /* Make username and password fields consistent */
+        #id_username {
+            width: 250px;
+            box-sizing: border-box;
+            float: none;
+            clear: both;
+            margin: 0 0 10px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        #content form label {
+            float: none;
+            display: block;
+        }
+
+        /* Center login and registration content */
+        .auth-page #content {
+            float: none;
+            width: 100%;
+            padding: 0;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Center the form heading */
+        .auth-page #content h1 {
+            width: 300px;
+            box-sizing: border-box;
+        }
+
+        /* Keep form aligned with heading */
+        .auth-page #content form {
+            width: 300px;
+        }
+
+        /* Center the login/register form */
+        .auth-page #content form p {
+            width: 100%;
+        }
+
+        /* Hide sidebar */
+        .auth-page #sidebar {
+            display: none;
+        }
+    </style>
+
 </head>
-<body>
+<body class="{% if request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'register' %}auth-page{% endif %}">
+
+    <div class="site-header">
+
+        <!-- Profile section -->
+        <div class="profile-section">
+            <button type="button"
+                class="profile-button"
+                id="profile-toggle"
+                title="Profile"
+                aria-controls="profile-dropdown"
+                aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    width="30"
+                    height="30"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round">
+
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+                </svg>
+            </button>
+
+            <span class="profile-username">
+                {% if user.is_authenticated %}
+                    {{ user.username }}
+                {% else %}
+                    Guest
+                {% endif %}
+            </span>
+
+            <div class="profile-dropdown" id="profile-dropdown">
+
+                {% if user.is_authenticated %}
+
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-logout">
+                            Logout
+                        </button>
+                    </form>
+
+                {% else %}
+
+                    <a href="{% url 'login' %}">Login</a>
+                    <a href="{% url 'blog:register' %}">Register</a>
+
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Home section -->
+        <a href="{% url 'blog:post_list' %}" class="site-home" title="Home">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+
+                <path d="m3 10 9-7 9 7"/>
+                <path d="M5 9v12h14V9"/>
+                <path d="M9 21v-8h6v8"/>
+            </svg>
+
+            <span>My Blog</span>
+        </a>
+
+    </div>
+
+
     <div id="content">
         {% block content %}
         {% endblock %}
     </div>
 
-    <div id="sidebar">
-        <h2>My blog</h2>
-        <p>
-            This is my blog.
-            I've written {% total_posts %} posts so far.
-        </p>
-        <p>
-            <a href="{% url 'blog:post_feed' %}">
-                Subscribe to my RSS feed
-            </a>
-        </p>
-        <h3>Latest posts</h3>
-        {% show_latest_posts 3 %}
-        <h3>Most commented posts</h3>
-        {% get_most_commented_posts as most_commented_posts %}
-        <ul>
-            {% for post in most_commented_posts %}
-                <li>
-                    <a href="{{ post.get_absolute_url}}">{{ post.title }}</a>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
+    {% block sidebar %}
+        <div id="sidebar">
+            <h2>My blog</h2>
+            <p>
+                This is my blog.
+                I've written {% total_posts %} posts so far.
+            </p>
+
+            <h3>Search the blog</h3>
+            <form action="{% url 'blog:post_search' %}" method="get">
+                <input type="text" name="query" placeholder="Search posts..." required>
+                <button type="submit">Search</button>
+            </form>
+
+            <p>
+                <a href="{% url 'blog:post_feed' %}">
+                    Subscribe to my RSS feed
+                </a>
+            </p>
+
+            <h3>Latest posts</h3>
+            {% show_latest_posts 3 %}
+
+            <h3>Most commented posts</h3>
+            {% get_most_commented_posts as most_commented_posts %}
+            <ul>
+                {% for post in most_commented_posts %}
+                    <li>
+                        <a href="{{ post.get_absolute_url}}">{{ post.title }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endblock %}
+
+    <script>
+        const profileToggle = document.getElementById('profile-toggle');
+        const profileDropdown = document.getElementById('profile-dropdown');
+
+        profileToggle.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const isExpanded = profileToggle.getAttribute('aria-expanded') === 'true';
+            profileDropdown.classList.toggle('show', !isExpanded);
+            profileToggle.setAttribute('aria-expanded', String(!isExpanded));
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!profileDropdown.contains(event.target) &&
+                !profileToggle.contains(event.target)) {
+                profileDropdown.classList.remove('show');
+                profileToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    </script>
+
 </body>
 </html>
