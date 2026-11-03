@@ -1,11 +1,13 @@
 from django.core.mail import send_mail
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.db.models import Count, Q
 #from django.views.generic import ListView
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramWordSimilarity
-from .forms import CommentForm, EmailPostForm, SearchForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
+from .forms import CommentForm, EmailPostForm, SearchForm, RegistrationForm
 from .models import Post
 from taggit.models import Tag
 
@@ -59,18 +61,35 @@ def post_detail(request, year, month, day, post):
 
     # List of active comments for this post
     comments = post.comments.filter(active=True)
+
     # Form for users to comment
     form = CommentForm()
 
-    # List of similar post
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            form = CommentForm(request.POST)
+
+            if form.is_valid():
+                new_comment = form.save(commit=False)
+                new_comment.post = post
+                new_comment.name = request.user.username
+                new_comment.email = request.user.email
+                new_comment.save()
+
+                return redirect(post.get_absolute_url())
+            else:
+                return render('login')
+
+    # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
+
     similar_posts = Post.published.filter(
         tags__in=post_tags_ids
     ).exclude(id=post.id)
+
     similar_posts = similar_posts.annotate(
         same_tags=Count('tags')
     ).order_by('-same_tags', '-publish')[:4]
-
 
     return render(
         request,
@@ -85,6 +104,7 @@ def post_detail(request, year, month, day, post):
     )
 
 
+@login_required
 def post_share(request, post_id):
     # Retrieve post by id
     post = get_object_or_404(
@@ -100,17 +120,22 @@ def post_share(request, post_id):
         if form.is_valid():
             # Form fields passed validation
             cd = form.cleaned_data
+
             post_url = request.build_absolute_uri(
                 post.get_absolute_url()
             )
+
             subject = (
-                f"{cd['name']} ({cd['email']})"
+                f"{request.user.username}"
                 f"recommends you read {post.title}"
             )
             message = (
                 f"Read {post.title} at {post_url}\n\n"
-                f"{cd['name']}\'s comments: {cd['comments']}"
+                f"Recommended by: {request.user.username}\n"
+                f"Email: {request.user.email}\n\n"
+                f"Comments: {cd['comments']}"
             )
+
             send_mail(
                 subject=subject,
                 message=message,
@@ -120,6 +145,7 @@ def post_share(request, post_id):
             sent = True
     else:
         form = EmailPostForm()
+
     return render(
         request,
         'blog/post/share.html',
@@ -130,6 +156,7 @@ def post_share(request, post_id):
         }
     )
 
+@login_required
 @require_POST
 def post_comment(request, post_id):
     post = get_object_or_404(
@@ -137,16 +164,26 @@ def post_comment(request, post_id):
         id=post_id,
         status=Post.Status.PUBLISHED
     )
+
     comment = None
+
     # A comment was posted
     form = CommentForm(data=request.POST)
+
     if form.is_valid():
         # Create Comment object without saving it to database
         comment = form.save(commit=False)
+
         # Assign the post to the comment
         comment.post = post
+
+        # Assign the logged-in user's account details
+        comment.name = request.user.username
+        comment.email = request.user.email
+
         # Save the comment to the database
         comment.save()
+
     return render(
         request,
         'blog/post/comment.html',
@@ -198,4 +235,22 @@ def post_search(request):
             'query': query,
             'results': results
         }
+    )
+
+
+def register(request):
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST)
+
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('blog:post_list')
+    else:
+        form = RegistrationForm()
+
+    return render(
+        request,
+        'registration/register.html',
+        {'form': form}
     )

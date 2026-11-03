@@ -1,15 +1,16 @@
+from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from .models import Comment
 
 
+
 class EmailPostForm(forms.Form):
-    name = forms.CharField(max_length=25)
-    email = forms.EmailField()
-    to = forms.EmailField()
+    to = forms.EmailField(label='Recipient email')
     comments = forms.CharField(
         required=False,
         widget=forms.Textarea
     )
+
 
 class CommentBoundField(forms.BoundField):
     comment_class = "comment"
@@ -25,7 +26,11 @@ class CommentForm(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = ['name', 'email', 'body']
+        fields = ['body']
 
 class SearchForm(forms.Form):
     query = forms.CharField()
+
+class RegistrationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        fields = ['username', 'email']

@@ -1,0 +1,99 @@
+
+{% extends "blog/base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+    <h1>Login</h1>
+
+    {% if form.errors %}
+        <p>
+            Your username and password didn't match.
+            Please try again.
+        </p>
+    {% endif %}
+
+    {% if next %}
+        <p>Please login to access this page.</p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.username.as_field_group }}
+
+        <div class="password-field">
+            <label for="id_password">Password:</label>
+
+            <div class="password-input-wrapper">
+                <input
+                    type="password"
+                    name="password"
+                    id="id_password"
+                    required
+                >
+
+                <button
+                    type="button"
+                    id="togglePassword"
+                    class="password-toggle"
+                    aria-label="Show password"
+                >
+                    <svg
+                        id="eyeIcon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <p>
+            <input type="submit" value="Login">
+        </p>
+    </form>
+
+    <script>
+        const passwordInput = document.getElementById('id_password');
+        const toggleButton = document.getElementById('togglePassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        toggleButton.addEventListener('click', function () {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+
+                toggleButton.setAttribute('aria-label', 'Hide password');
+
+                eyeIcon.innerHTML = `
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M3 3l18 18"/>
+                `;
+
+            } else {
+                passwordInput.type = 'password';
+
+                toggleButton.setAttribute('aria-label', 'Show password');
+
+                eyeIcon.innerHTML = `
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+                    <circle cx="12" cy="12" r="3"/>
+            `;
+}
+        });
+    </script>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}
