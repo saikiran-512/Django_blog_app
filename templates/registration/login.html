@@ -1,20 +1,24 @@
-
+```html
 {% extends "blog/base.html" %}
 
 {% block title %}Login{% endblock %}
 
 {% block content %}
+<div class="register-card login-card">
+
     <h1>Login</h1>
 
     {% if form.errors %}
-        <p>
+        <p class="register-notice">
             Your username and password didn't match.
             Please try again.
         </p>
     {% endif %}
 
     {% if next %}
-        <p>Please login to access this page.</p>
+        <p class="register-notice">
+            Please login to access this page.
+        </p>
     {% endif %}
 
     <form method="post">
@@ -51,49 +55,54 @@
                         stroke-linecap="round"
                         stroke-linejoin="round"
                     >
-
                         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
                 </button>
             </div>
         </div>
+
         <input type="hidden" name="next" value="{{ next }}">
 
-        <p>
+        <p class="register-submit">
             <input type="submit" value="Login">
         </p>
     </form>
 
-    <script>
-        const passwordInput = document.getElementById('id_password');
-        const toggleButton = document.getElementById('togglePassword');
-        const eyeIcon = document.getElementById('eyeIcon');
+    <p class="register-login">
+        Don't have an account?
+        <a href="{% url 'blog:register' %}">Create account</a>
+    </p>
 
-        toggleButton.addEventListener('click', function () {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
+</div>
 
-                toggleButton.setAttribute('aria-label', 'Hide password');
+<script>
+    const passwordInput = document.getElementById('id_password');
+    const toggleButton = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
 
-                eyeIcon.innerHTML = `
-                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M3 3l18 18"/>
-                `;
+    toggleButton.addEventListener('click', function () {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleButton.setAttribute('aria-label', 'Hide password');
 
-            } else {
-                passwordInput.type = 'password';
-
-                toggleButton.setAttribute('aria-label', 'Show password');
-
-                eyeIcon.innerHTML = `
-                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
-                    <circle cx="12" cy="12" r="3"/>
+            eyeIcon.innerHTML = `
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M3 3l18 18"/>
             `;
-}
-        });
-    </script>
+        } else {
+            passwordInput.type = 'password';
+            toggleButton.setAttribute('aria-label', 'Show password');
+
+            eyeIcon.innerHTML = `
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+            `;
+        }
+    });
+</script>
 {% endblock %}
 
 {% block sidebar %}{% endblock %}
+```
