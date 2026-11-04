@@ -6,10 +6,12 @@ from taggit.managers import TaggableManager
 
 class PublishedManager(models.Manager):
     def get_queryset(self):
-        return(
-            super().get_queryset().filter(status=Post.Status.PUBLISHED)
+        return (
+            super().get_queryset().filter(
+                status=Post.Status.PUBLISHED,
+                publish__lte=timezone.now()
+            )
         )
-
 
 
 class Post(models.Model):
@@ -38,7 +40,7 @@ class Post(models.Model):
     )
     objects = models.Manager() # The default manager.
     published = PublishedManager() # Our custom manager.
-    tags = TaggableManager()
+    tags = TaggableManager(blank=True)
 
     class Meta:
         ordering = ['-publish']

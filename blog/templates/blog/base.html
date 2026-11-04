@@ -45,9 +45,17 @@
                 {% endif %}
             </span>
 
-            <div class="profile-dropdown" id="profile-dropdown">
+           <div class="profile-dropdown" id="profile-dropdown">
+
+                <a href="{% url 'blog:post_create' %}">
+                    Create a Post
+                </a>
 
                 {% if user.is_authenticated %}
+
+                    <a href="{% url 'blog:my_posts' %}">
+                        My Posts
+                    </a>
 
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
@@ -58,8 +66,13 @@
 
                 {% else %}
 
-                    <a href="{% url 'login' %}">Login</a>
-                    <a href="{% url 'blog:register' %}">Register</a>
+                    <a href="{% url 'login' %}?next={% url 'blog:post_create' %}">
+                        Login
+                    </a>
+
+                    <a href="{% url 'blog:register' %}?action=post&next={% url 'blog:post_create' %}">
+                        Create Account
+                    </a>
 
                 {% endif %}
 

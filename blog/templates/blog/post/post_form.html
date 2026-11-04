@@ -1,0 +1,21 @@
+
+{% extends "blog/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <p>
+            <button type="submit">Save post</button>
+            <a href="{% url 'blog:my_posts' %}">Cancel</a>
+        </p>
+    </form>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

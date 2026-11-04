@@ -1,4 +1,3 @@
-```html
 {% extends "blog/base.html" %}
 
 {% block title %}Login{% endblock %}
@@ -34,6 +33,7 @@
                     type="password"
                     name="password"
                     id="id_password"
+                    autocomplete="current-password"
                     required
                 >
 
@@ -71,7 +71,9 @@
 
     <p class="register-login">
         Don't have an account?
-        <a href="{% url 'blog:register' %}">Create account</a>
+        <a href="{% url 'blog:register' %}?action=post{% if next %}&next={{ next|urlencode }}{% endif %}">
+            Create account
+        </a>
     </p>
 
 </div>

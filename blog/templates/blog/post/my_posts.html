@@ -1,0 +1,48 @@
+
+{% extends "blog/base.html" %}
+
+{% block title %}My Posts{% endblock %}
+
+{% block content %}
+    <h1>My Posts</h1>
+
+    <p>
+        <a href="{% url 'blog:post_create' %}">
+            Create a new post
+        </a>
+    </p>
+
+    {% for post in posts %}
+        <article class="post">
+            <h2>{{ post.title }}</h2>
+
+            <p class="date">
+                Status: {{ post.get_status_display }}
+                | Updated: {{ post.updated }}
+            </p>
+
+            {% if post.status == "PB" %}
+                <p>
+                    <a href="{{ post.get_absolute_url }}">View post</a>
+                </p>
+            {% endif %}
+
+            <p>
+                <a href="{% url 'blog:post_edit' post.id %}">
+                    Edit
+                </a>
+
+                |
+
+                <a href="{% url 'blog:post_delete' post.id %}">
+                    Delete
+                </a>
+            </p>
+        </article>
+
+    {% empty %}
+        <p>You haven't created any posts yet.</p>
+    {% endfor %}
+{% endblock %}
+
+{% block sidebar %}{% endblock %}
