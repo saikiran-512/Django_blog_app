@@ -1,17 +1,52 @@
-from django.core.mail import send_mail
-from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
-from django.db.models import Count, Q
-#from django.views.generic import ListView
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramWordSimilarity
-from django.contrib.auth import login
-from .forms import CommentForm, EmailPostForm, SearchForm, RegistrationForm
-from .models import Post
-from taggit.models import Tag
 from urllib.parse import urlencode
+from taggit.models import Tag
+
+from django.urls import reverse
+
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector, TrigramWordSimilarity
+
+from django.core.mail import send_mail
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+
+from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404, redirect, render
+
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.text import slugify
+from django.utils import timezone
+
+from django.views.decorators.http import require_POST, require_http_methods
+# from django.views.generic import ListView
+
+
+from .forms import CommentForm, EmailPostForm, RegistrationForm, SearchForm, PostForm
+from .models import Post
+
+def generate_post_slug(title, publish_date, post=None):
+    base_slug = slugify(title)[:240] or 'post'
+    candidate = base_slug
+    counter = 2
+
+    while True:
+        queryset = Post.objects.filter(
+            slug=candidate,
+            publish__date=publish_date.date()
+        )
+
+        if post is not None:
+            queryset = queryset.exclude(pk=post.pk)
+
+        if not queryset.exists():
+            return candidate
+
+        suffix = f'-{counter}'
+        candidate = (
+            f'{base_slug[:250 - len(suffix)].rstrip("-")}'
+            f'{suffix}'
+        )
+        counter += 1
 
 # Create your views here.
 def post_list(request, tag_slug=None):
@@ -60,8 +95,7 @@ def registration_redirect(action, next_url):
 
 def post_detail(request, year, month, day, post):
     post = get_object_or_404(
-        Post,
-        status=Post.Status.PUBLISHED,
+        Post.published,
         slug=post,
         publish__year=year,
         publish__month=month,
@@ -73,24 +107,6 @@ def post_detail(request, year, month, day, post):
 
     # Form for users to comment
     form = CommentForm()
-
-    if request.method == 'POST':
-        if request.user.is_authenticated:
-            form = CommentForm(request.POST)
-
-            if form.is_valid():
-                new_comment = form.save(commit=False)
-                new_comment.post = post
-                new_comment.name = request.user.username
-                new_comment.email = request.user.email
-                new_comment.save()
-
-                return redirect(post.get_absolute_url())
-            else:
-                return registration_redirect(
-                    'comment',
-                    post.get_absolute_url()
-            )
 
     # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
@@ -119,9 +135,8 @@ def post_detail(request, year, month, day, post):
 def post_share(request, post_id):
     # Retrieve post by id
     post = get_object_or_404(
-        Post,
+        Post.published,
         id=post_id,
-        status=Post.Status.PUBLISHED
     )
     if not request.user.is_authenticated:
         return registration_redirect(
@@ -179,9 +194,8 @@ def post_share(request, post_id):
 @require_POST
 def post_comment(request, post_id):
     post = get_object_or_404(
-        Post,
+        Post.published,
         id=post_id,
-        status=Post.Status.PUBLISHED
     )
 
     if not request.user.is_authenticated:
@@ -301,4 +315,133 @@ def register(request):
             'action': action,
             'next': next_url
         }
+    )
+
+
+@login_required
+def post_create(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST)
+
+        if form.is_valid():
+            post = form.save(commit=False)
+
+            # Assign the logged-in user as author.
+            post.author = request.user
+
+            # New posts receive the current publication timestamp.
+            post.publish = timezone.now()
+
+            post.slug = generate_post_slug(
+                post.title,
+                post.publish
+            )
+
+            post.save()
+            form.save_m2m()
+
+            return redirect('blog:my_posts')
+
+    else:
+        form = PostForm()
+
+    return render(
+        request,
+        'blog/post/post_form.html',
+        {'form': form, 'title': 'Create a post'}
+    )
+
+
+@login_required
+def my_posts(request):
+    posts = Post.objects.filter(
+        author=request.user
+    ).order_by('-updated')
+
+    return render(
+        request,
+        'blog/post/my_posts.html',
+        {'posts': posts}
+    )
+
+
+@login_required
+def post_edit(request, post_id):
+    # Only the owner can retrieve this post for editing.
+    post = get_object_or_404(
+        Post,
+        pk=post_id,
+        author=request.user
+    )
+
+    old_status = post.status
+    old_title = post.title
+
+    if request.method == 'POST':
+        form = PostForm(request.POST, instance=post)
+
+        if form.is_valid():
+            post = form.save(commit=False)
+
+            # Reset publication date when publishing a draft.
+            if (
+                old_status == Post.Status.DRAFT
+                and post.status == Post.Status.PUBLISHED
+            ):
+                post.publish = timezone.now()
+
+                post.slug = generate_post_slug(
+                    post.title,
+                    post.publish,
+                    post=post
+                )
+
+            # Update the slug when editing a draft title.
+            elif (
+                post.status == Post.Status.DRAFT
+                and old_title != post.title
+            ):
+                post.slug = generate_post_slug(
+                    post.title,
+                    post.publish,
+                    post=post
+                )
+
+            post.save()
+            form.save_m2m()
+
+            return redirect('blog:my_posts')
+
+    else:
+        form = PostForm(instance=post)
+
+    return render(
+        request,
+        'blog/post/post_form.html',
+        {
+            'form': form,
+            'title': 'Edit post',
+            'post': post
+        }
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def post_delete(request, post_id):
+    # Return 404 if the post doesn't belong to this user.
+    post = get_object_or_404(
+        Post,
+        pk=post_id,
+        author=request.user
+    )
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blog:my_posts')
+
+    return render(
+        request,
+        'blog/post/post_confirm_delete.html',
+        {'post': post}
     )
