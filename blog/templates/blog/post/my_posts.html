@@ -3,45 +3,44 @@
 
 {% block title %}My Posts{% endblock %}
 
-{% block content %}
-    <h1>My Posts</h1>
+{% block page_class %}no-sidebar{% endblock %}
 
-    <p>
-        <a href="{% url 'blog:post_create' %}">
+{% block content %}
+    <h1>My posts</h1>
+
+    <div class="posts-toolbar">
+        <a href="{% url 'blog:post_create' %}" class="btn btn-primary">
             Create a new post
         </a>
-    </p>
+    </div>
 
     {% for post in posts %}
-        <article class="post">
-            <h2>{{ post.title }}</h2>
+        <article class="post-row">
+            <div>
+                <h2>
+                    {% if post.status == "PB" %}
+                        <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                    {% else %}
+                        {{ post.title }}
+                    {% endif %}
+                </h2>
 
-            <p class="date">
-                Status: {{ post.get_status_display }}
-                | Updated: {{ post.updated }}
-            </p>
-
-            {% if post.status == "PB" %}
-                <p>
-                    <a href="{{ post.get_absolute_url }}">View post</a>
+                <p class="post-row-meta">
+                    <span class="status-badge {% if post.status == 'PB' %}published{% else %}draft{% endif %}">
+                        {{ post.get_status_display }}
+                    </span>
+                    <span>Updated {{ post.updated|date:"M j, Y" }}</span>
                 </p>
-            {% endif %}
+            </div>
 
-            <p>
-                <a href="{% url 'blog:post_edit' post.id %}">
-                    Edit
-                </a>
-
-                |
-
-                <a href="{% url 'blog:post_delete' post.id %}">
-                    Delete
-                </a>
-            </p>
+            <div class="post-row-actions">
+                <a href="{% url 'blog:post_edit' post.id %}">Edit</a>
+                <a href="{% url 'blog:post_delete' post.id %}">Delete</a>
+            </div>
         </article>
 
     {% empty %}
-        <p>You haven't created any posts yet.</p>
+        <p class="empty-state">You haven't created any posts yet.</p>
     {% endfor %}
 {% endblock %}
 

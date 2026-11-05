@@ -3,21 +3,26 @@
 
 {% block title %}Delete Post{% endblock %}
 
+{% block page_class %}no-sidebar{% endblock %}
+
 {% block content %}
-    <h1>Delete Post</h1>
+    <div class="form-card">
+        <h1>Delete post</h1>
 
-    <p>
-        Are you sure you want to delete
-        <strong>{{ post.title }}</strong>?
-    </p>
+        <p>
+            Are you sure you want to delete
+            <strong>{{ post.title }}</strong>? This can't be undone.
+        </p>
 
-    <form method="post">
-        {% csrf_token %}
+        <form method="post">
+            {% csrf_token %}
 
-        <button type="submit">Yes, delete this post</button>
-
-        <a href="{% url 'blog:my_posts' %}">Cancel</a>
-    </form>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">Yes, delete this post</button>
+                <a href="{% url 'blog:my_posts' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
 {% endblock %}
 
 {% block sidebar %}{% endblock %}
