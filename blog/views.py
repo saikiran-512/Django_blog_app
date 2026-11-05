@@ -22,7 +22,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 
 
 from .forms import CommentForm, EmailPostForm, RegistrationForm, SearchForm, PostForm
-from .models import Post
+from .models import FavouritePost, Post
 
 def generate_post_slug(title, publish_date, post=None):
     base_slug = slugify(title)[:240] or 'post'
@@ -50,7 +50,9 @@ def generate_post_slug(title, publish_date, post=None):
 
 # Create your views here.
 def post_list(request, tag_slug=None):
-    post_list = Post.published.all()
+    post_list = Post.published.annotate(
+        comments_count=Count('comments', distinct=True),
+    )
     tag = None
     if tag_slug:
         tag = get_object_or_404(Tag, slug=tag_slug)
@@ -61,20 +63,42 @@ def post_list(request, tag_slug=None):
     try:
         posts = paginator.page(page_number)
     except PageNotAnInteger:
-        #If page_number is not an integer get the first page
         posts = paginator.page(1)
     except EmptyPage:
-        #If page_number is out of range get last page of results
         posts = paginator.page(paginator.num_pages)
+
+    # FavouritePost has a composite primary key, which Django can't
+    # traverse through a join inside annotate(). Count likes with a
+    # separate grouped query instead and attach the totals by hand.
+    post_ids = [post.id for post in posts]
+
+    likes_counts = dict(
+        FavouritePost.objects.filter(post_id__in=post_ids)
+        .values('post_id')
+        .annotate(count=Count('user'))
+        .values_list('post_id', 'count')
+    )
+    for post in posts:
+        post.likes_count = likes_counts.get(post.id, 0)
+
+    liked_post_ids = set()
+    if request.user.is_authenticated:
+        liked_post_ids = set(
+            FavouritePost.objects.filter(
+                user=request.user,
+                post_id__in=post_ids
+            ).values_list('post_id', flat=True)
+        )
+
     return render(
         request,
         'blog/post/list.html',
         {
             'posts': posts,
-            'tag': tag
+            'tag': tag,
+            'liked_post_ids': liked_post_ids
         }
     )
-
 # Class-based view for post list
 # class PostListView(ListView):
 #     """
@@ -119,6 +143,12 @@ def post_detail(request, year, month, day, post):
         same_tags=Count('tags')
     ).order_by('-same_tags', '-publish')[:4]
 
+    likes_count = post.favouritepost_set.count()
+    liked = (
+        request.user.is_authenticated
+        and post.favouritepost_set.filter(user=request.user).exists()
+    )
+
     return render(
         request,
         'blog/post/detail.html',
@@ -126,10 +156,37 @@ def post_detail(request, year, month, day, post):
             'post' : post,
             'comments': comments,
             'form': form,
-            'similar_posts': similar_posts
+            'similar_posts': similar_posts,
+            'likes_count': likes_count,
+            'liked': liked
         }
 
     )
+
+
+@login_required
+@require_POST
+def post_like_toggle(request, post_id):
+    post = get_object_or_404(Post.published, id=post_id)
+
+    like, created = FavouritePost.objects.get_or_create(
+        user=request.user,
+        post=post
+    )
+
+    if not created:
+        like.delete()
+
+    next_url = request.POST.get('next')
+
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure()
+    ):
+        return redirect(next_url)
+
+    return redirect(post.get_absolute_url())
 
 
 def post_share(request, post_id):

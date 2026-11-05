@@ -7,13 +7,13 @@
         {% csrf_token %}
 
         <p>
-            <input type="submit" value="Add comment">
+            <button type="submit" class="btn btn-primary">Add comment</button>
         </p>
     </form>
 {% else %}
     <p>
         <a href="{% url 'login' %}?next={{ request.path }}">
-            Login
+            Log in
         </a>
         to add a comment.
     </p>
